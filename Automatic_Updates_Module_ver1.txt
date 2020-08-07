@@ -1,0 +1,93 @@
+'''
+SOFTWARE DEVELOPMENT PROJECT
+Client Update Utility - Automation_Module
+
+Made By: Will 12SDA
+Started on 28/07/2020
+
+This code contains the functionality for automatic/timed
+updates of data to the clients
+
+Naming Conventions: Camel Case
+
+This uses:
+Data_Management_Module.py
+GUI_Module.py
+Update_Log_Manager_Module.py
+
+'''
+
+#Import dependencies
+from datetime import datetime  
+from datetime import timedelta
+import time
+
+#Modules I created
+import Data_Management_Module as data_manager
+import GUI_Module as gui
+import Update_Log_Manager_Module as update_log
+
+#Global variables to store status of updates and frequency
+isPaused = True
+updateFrequency = ""
+versionTXT = open("data/current-update-version.txt","r") #Load in the current version
+version = float(versionTXT.read())
+versionTXT.close()
+mostRecentUpdate = ""
+
+#---------------------------------------------------------------------------------------------------
+
+
+#Function to calculate exact time of the next update with the given frequency
+def calculateNextUpdate():
+    data = updateFrequency.split(":") #Get info from inputted update frequency
+    newDate = datetime.now() + timedelta(hours=int(data[0]),minutes=int(data[1]),seconds=int(data[2])) #Add the current datetime to the inputted frequency
+
+    #Format date
+    m = str(newDate.month)
+    d = str(newDate.day)
+    h = str(newDate.hour)
+    mi = str(newDate.minute)
+
+    #Add zeroes in front of values less than ten so it appears nice on the GUI
+    if int(m) < 10:
+        m = "0" + m
+    if int(d) < 10:
+        d = "0" + d
+    if int(h) < 10:
+        h = "0" + h
+    if int(mi) < 10:
+        mi = "0" + mi
+
+    #Format it appropriately
+    newDate = d + "/" + m + " " + h + ":" + mi
+    return newDate #Return the outputted date
+
+#---------------------------------------------------------------------------------------------------
+
+
+#This is the main loop which accounts for automatic updates
+def runUpdateLoop(clients):
+    global version
+    global mostRecentUpdate
+    
+    mostRecentUpdate = datetime.now()
+    
+    data = updateFrequency.split(":") #Get info from inputted update frequency
+    delay = timedelta(hours=int(data[0]),minutes=int(data[1]),seconds=int(data[2])).total_seconds() #Set the delay (in seconds) for how frequent the loop should repeat
+
+    while isPaused == False: #Only if it isnt paused
+        print("Running an auto-update")
+        version += 0.1 #This is a new version/update, reflect it here
+        
+        versionTXT = open("data/current-update-version.txt","r+") #Open up the text file to save version
+        versionTXT.write(str(version)[0:3]) #Save the version
+        versionTXT.close()
+        
+        data_manager.distributeUpdates(clients, str(version)[0:3]) #Using 'Data_Management_Module.py', distribute an update to each client
+        gui.setMostRecentUpdateText()
+        update_log.addToUpdateLog(clients, str(version)[0:3]) #Add the clients to the update log
+        time.sleep(delay) #Wait out the delay
+
+
+#---------------------------------------------------------------------------------------------------   

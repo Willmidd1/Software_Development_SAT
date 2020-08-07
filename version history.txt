@@ -1,0 +1,34 @@
+Major Project .zip file versions:
+ver1 - Just GUI module with 1st page/homepage completed, addition of images folder for GUI images
+ver2 - GUI module with 1st and 2nd pages, addition of data folder for all python accessible txt files
+ver3 - GUI module with all 3 pages with basic page functionality and addition of libraries folder for external imports. Also addition of a main.py
+ver4 - Completed GUI module + creation of HTML webpage template and Client webpages folder
+ver5 - Beggining of Data_Management_Module with functionality for creating webpages,
+       distributing updates, writing to latest update text files, and intergration with client webpages and HTML
+ver6 - Completed Data_Management_Module.py with new functionality for removing webpages and validating data. 
+       integrartion with GUI module for adding/removing clients and manual updating
+ver7 - Completed Automatic_Updates_Module.py with functionality for updates to happen automatically given a frequency
+ver8 - Completed Update_Log_Manager_Module.py with full update log functionality including, viewing log in GUI
+       exporting the log as .txt or excel-compatible .csv, and sorting the log in different ways.
+ver9 - Entire update scheduler functionality completed, email validation has been included. All main functionality is completed
+       and software is now usable
+ver10 - Final version of software with internal documentation and validation
+
+GUI_Module Versions:
+ver1 - Page 1 completed
+ver2 - Page 2 and text file read/write for client list completed
+ver3 - Page 3 update scheduler completed, external libraries added
+ver4 - Completed GUI Module with full validation
+
+
+Data_Management_Module Versions:
+ver1 - Functionality for update distribution, creation of HTML webpage and writing to required txt files
+ver2 - Final version with added functions for removing HTML pages, validating data types and moving uploaded
+       data to the repository
+
+Automatic_Updates_Module Versions:
+ver1 - Full functionality for automatic updates with constantly running while loop
+ver2 - Additional functionality for a scheduledEvent class for managing and running scheduled events
+
+Update_Log_Manager_Module Versions:
+ver1 - Functioanlity for log to be displayed, formated for exporting, and sorted with Quicksort alorithm

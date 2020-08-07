@@ -1,0 +1,861 @@
+'''
+SOFTWARE DEVELOPMENT PROJECT
+Client Update Utility - GUI MODULE
+
+Made By: Will 12SDA
+Started on 15/07/2020
+
+This code contains the code required for all pages of
+the GUI and its functionality
+
+Naming Conventions: Camel Case
+
+This uses:
+tkcalendar library (in libraries folder)
+pytz library (in libraries folder)
+babel library (in libraries folder)
+
+'''
+
+
+from tkinter import *
+from tkinter import ttk
+import tkinter as tk
+from tkinter import simpledialog
+from tkinter import messagebox
+import os
+
+#-----------------------------------------------------------------------------------------------
+
+#Variables to keep track of the windows position on the screen
+winX = 100
+winY = 100
+
+#Other required global variables
+tickbox_Y = 0
+btnList = []
+clientList = [] #Create a list where clients will be added
+mainFrame = 0
+isFirstLoad = True
+switchStatus = False
+pauseStatus = False
+emailReminders = False
+strPauseStatus = ""
+popupMenu = ""
+activeClients = []
+arrDatePanels = []
+dayLabels = []
+selectedMonth = 6
+
+
+#Function to clear a GUI page
+def clearPage(window):
+    global winX, winY
+    winX = window.winfo_x() #Save the x and y position of the window
+    winY = window.winfo_y()
+    window.destroy()
+
+
+#Function to setup basic root window
+def setupWindow(window):
+    #Configure Root Window and preserve its previous position
+    window.geometry("800x670+"+str(winX)+"+"+str(winY)) #Width x Height + PosX + PosY
+    window.configure(bg = "#333333")
+    window.title("v1.0") #Display software version number
+    window.wm_iconbitmap('images/icon.ico') #Add software icon
+    window.resizable(width=False, height=False) #Stop user from being able to resize the window
+
+
+#Function to clear a txt file
+def deleteContent(pfile):
+    pfile.seek(0)
+    pfile.truncate()
+    
+#-----------------------------------------------------------------------------------------------
+    
+#Create a client class for each row of the client list
+class client():
+    def __init__(self, name, url, version,active):
+        self.name = name
+        self.url = url
+        self.version = version
+        self.active = active
+
+    #Draws client to the GUI
+    def drawClient(self):
+        global tickbox_Y
+        global mainFrame
+        self.nameLabel = Label(mainFrame, text=str(self.name), bg="#1a1a1a",fg="White",font=("{Lucida Console}",10))
+        self.nameLabel.place(x=65,y=tickbox_Y+5)
+
+        self.urlLabel = Label(mainFrame, text=str(self.url), bg="#1a1a1a",fg="White",font=("{Lucida Console}",10))
+        self.urlLabel.place(x=260,y=tickbox_Y+5)
+
+        self.versionLabel = Label(mainFrame, text=str(self.version), bg="#1a1a1a",fg="White",font=("{Lucida Console}",10))
+        self.versionLabel.place(x=460,y=tickbox_Y+5)
+        
+    #Delete GUI elements
+    def destroyClient(self):
+        self.nameLabel.destroy()
+        self.urlLabel.destroy()
+        self.versionLabel.destroy()
+
+    def updateState(self):
+        #Save this new state to the text file by finding its id
+        clientTXT = open("data/client-list.txt","r+")
+        lines = clientTXT.readlines()
+        deleteContent(clientTXT)
+        for line in lines:
+            if line != "\n":
+                if int(line[0:1]) == int(self.name[0:1]):
+                    i = lines.index(line)
+                    line = self.name + "," + self.url + "," + self.version + "," + str(self.active) + "\n"
+                    lines[i] = line
+        clientTXT.writelines(lines)
+        clientTXT.close()
+            
+def loadClients():
+    global clientList
+    
+    clientTXT = open("data/client-list.txt","r")
+    lines = clientTXT.readlines()
+    for line in lines:
+        if line != "\n":
+            data = line.split(",")
+            data3 = ""
+            if "True" in data[3]:
+                 data3 = True
+            elif "False" in data[3]:
+                data3 = False
+            c = client(data[0],data[1],data[2],data3)
+            clientList.append(c)
+
+if isFirstLoad:
+    loadClients()
+    isFirstLoad = False
+
+#-----------------------------------------------------------------------------------------------
+
+
+#A function is used to set up each GUI page so that buttons can cycle between pages. This is page 1, the main page
+def Setup_GUI_Page1():
+    global strPauseStatus
+    root = Tk()
+
+    setupWindow(root) #Draw basic window
+
+    #Configure Static Text Labels
+    title = Label(root, text="Client Update Utility",bg="#333333",fg="White",font=("Helvetica", 18, 'bold'))
+    title.place(x=450,y=30)
+
+    statusLabel = Label(root, text="Most Recent Update:",bg="#333333",fg="White",font=("Helvetica", 12))
+    statusLabel.place(x=490, y=100)
+
+    timeLabel = Label(root, text="Last Updated:",bg="#333333",fg="White",font=("Helvetica", 12))
+    timeLabel.place(x=490, y=150)
+
+    uploadDataTitle = Label(root, text="Upload New Update Data:",bg="#333333",fg="White",font=("Helvetica", 13, 'bold'))
+    uploadDataTitle.place(x=370,y=440)
+
+    autoUpdatesLabel = Label(root, text="Auttomatic File Uploads:",bg="#333333",fg="#999999",font=("Helvetica", 11))
+    autoUpdatesLabel.place(x=410,y=550)
+
+    logFilterLabel = Label(root, text="Filter Log By:",bg="#333333",fg="White",font=("Helvetica", 12, 'bold'))
+    logFilterLabel.place(x=10, y=550)
+
+    logExportLabel = Label(root, text="Export Update Log:",bg="#333333",fg="White",font=("Helvetica", 12, 'bold'))
+    logExportLabel.place(x=10, y=610)
+
+
+
+    #Configure Variable or code-accessible strings
+    strUpdateStatus = tk.StringVar()
+    strUpdateStatus.set("SUCCESS")
+    statusContent = Label(root, textvariable=strUpdateStatus,bg="#333333",fg="#00ff00",font=("Helvetica", 12, 'bold'))
+    statusContent.place(x=643, y=100)
+
+    strTimestamp = tk.StringVar()
+    strTimestamp.set("12/06/2020 16:42")
+    timestamp = Label(root, textvariable=strTimestamp,bg="#333333",fg="#5e99ff",font=("Helvetica", 12))
+    timestamp.place(x=601, y=150)
+
+    strLastUpload = tk.StringVar()
+    strLastUpload.set("Last upload: 0 Days ago")
+    lastUploadLabel = Label(root, textvariable=strLastUpload,bg="#333333",fg="#999999",font=("Helvetica", 10))
+    lastUploadLabel.place(x=480,y=619)
+
+    strPauseStatus = tk.StringVar()
+    strPauseStatus.set("Running...")
+    PauseButtonLabel = Label(root, textvariable=strPauseStatus,bg="#333333",fg="#999999",font=("Helvetica", 10))
+    PauseButtonLabel.place(x=385,y=180)
+
+
+
+    #Configure updatte log and scrollbar functionality
+    logCanvas = Canvas(root,width=350,height=500) #Canvas for output log
+    logCanvas.place(x=10,y=10)
+
+    scrollbar = Scrollbar(logCanvas) #Create Scrollbar widget
+
+
+
+    #Set listbox widget for scrolling
+    mylist = Listbox(logCanvas,yscrollcommand=scrollbar.set,width=45,height=30,font=("{Lucida Console}",10),bg="#1a1a1a",fg="White",bd=0,highlightthickness=0, relief='ridge')
+    mylist.insert(END,"")
+    mylist.insert(END, "UPDATE LOG") #Enter firs line in log
+
+    mylist.pack(side=LEFT,fill=BOTH)
+    scrollbar.pack(side=RIGHT,fill=Y)
+    scrollbar.config(command=mylist.yview,bg="black",activebackground="#313131")
+
+
+
+    #Create horizontal divider line
+    line = Frame(root,height=2,width=400,bg='#666666')
+    line.place(x=370,y=400)
+
+
+
+    #Configure File Uploading
+    def browseFiles():
+        print("Browsing files...")
+        #This will be handeled by a future data uploading module
+
+    def uploadFiles():
+        print("Files uploading...")
+        #This will also be handeled by a future module
+
+
+    #Setup browse files buttton
+    browseButtton = Button(root, width=9,height=1,text="Browse...",bg="#7d7d7d",activebackground='#575656', command=browseFiles)
+    browseButtton.place(x=410,y=485)
+
+    outline = Frame(bg='#333333',highlightbackground="#666666", highlightcolor="#666666", highlightthickness=1,bd=0,width=100,height=24)
+    outline.place(x=483,y=486)
+    fileStatus = Label(outline,text="No File Selected.", bg="#333333",font=("Helvetica", 10))
+    fileStatus.pack()
+
+    uploadButtton = Button(root, width=9,height=1,text="Upload",command=uploadFiles)
+    uploadButtton.place(x=620,y=485)
+
+
+    #Automatic Uploads Switch
+    global switchStatus
+    if not switchStatus:
+        img = PhotoImage(file="images/toggle_switch_off.png")
+    else:
+        img = PhotoImage(file="images/toggle_switch_on.png")
+
+    def autoUpdatesToggle():
+        global switchStatus
+
+        if not switchStatus:
+            img.config(file="images/toggle_switch_on.png")
+            switchStatus = True
+        else:
+            img.config(file="images/toggle_switch_off.png")
+            switchStatus = False
+
+    switch = Button(root, image=img, bd=0,highlightthickness=0, relief='ridge', command=autoUpdatesToggle)
+    switch.place(x=585,y=550)
+
+
+
+    #Export and Filter Buttons
+    exportTXTButton = Button(root,width=5, text=".txt", bg="#333333",fg="#999999",font=("Helvetica", 12),highlightbackground="#666666", relief='ridge',highlightcolor="#666666", highlightthickness=1)
+    exportTXTButton.place(x=180,y=607)
+
+    exportCSVButton = Button(root,width=5, text=".csv", bg="#333333",fg="#999999",font=("Helvetica", 12),highlightbackground="#666666", relief='ridge',highlightcolor="#666666", highlightthickness=1)
+    exportCSVButton.place(x=250,y=607)
+
+    filterWebsite = Button(root,text="Website\nDestination",activebackground='#333333',bg="#333333",fg="#999999",font=("Helvetica", 10),bd=0,highlightthickness=0, relief='ridge')
+    filterWebsite.place(x=125,y=545)
+
+    filterDate = Button(root,text="Date",activebackground='#333333',bg="#333333",fg="#999999",font=("Helvetica", 10),bd=0,highlightthickness=0, relief='ridge')
+    filterDate.place(x=225,y=550)
+
+    filterStatus = Button(root,text="Fail /\nSuccess",activebackground='#333333',bg="#333333",fg="#999999",font=("Helvetica", 10),bd=0,highlightthickness=0, relief='ridge')
+    filterStatus.place(x=283,y=545)
+
+    vLine = Frame(root,height=40,width=2,bg='#666666')
+    vLine.place(x=210,y=543)
+
+    vLine2 = Frame(root,height=40,width=2,bg='#666666')
+    vLine2.place(x=270,y=543)
+
+
+
+    #Pause button functionality
+    global pauseStatus
+    if not pauseStatus:
+        img2 = PhotoImage(file="images/pause_button_unpaused.png")
+        strPauseStatus.set("Running...")
+    else:
+        img2 = PhotoImage(file="images/pause_button_paused.png")
+        strPauseStatus.set(" Paused")
+
+    def pauseUpdates():
+        global pauseStatus
+        global strPauseStatus
+
+        if not pauseStatus:
+            img2.config(file='images/pause_button_paused.png')
+            pauseStatus = True
+            strPauseStatus.set(" Paused")
+        else:
+            img2.config(file='images/pause_button_unpaused.png')
+            pauseStatus = False
+            strPauseStatus.set("Running...")
+        
+    pauseButton = Button(root, image=img2,bd=0,highlightthickness=0, relief='flat',command=pauseUpdates)
+    pauseButton.place(x=380, y=103)
+
+    #Functions to handle the opeening of different GUI Pages
+    def openWebsiteList():
+        clearPage(root) #Clear the page
+        Setup_GUI_Page2() #Draw the desired page
+
+    def openUpdateScheduler():
+        clearPage(root)
+        Setup_GUI_Page3()
+
+        
+    #PNG Open scheduler and client website list buttons
+    img3 = PhotoImage(file='images/scheduler_button.png')
+    updateScheduler = Button(root, image=img3,bd=0,highlightthickness=0, relief='flat', command=openUpdateScheduler)
+    updateScheduler.place(x=465,y=230)
+
+    img4 = PhotoImage(file='images/website_list_button.png')
+    websiteListtButton = Button(root, image=img4,bd=0,highlightthickness=0, relief='flat', command=openWebsiteList)
+    websiteListtButton.place(x=446,y=310)
+
+
+
+    root.mainloop() #Begin main GUI Loop
+
+    # END OF PAGE ONE SETUP #
+
+
+#-----------------------------------------------------------------------------------------------
+
+
+#Function used by pages 2 and 3 to open the home page of the program
+def openHomePage(root):
+    clearPage(root) #Clear the page
+    Setup_GUI_Page1() #Draw the desired page
+
+
+#-----------------------------------------------------------------------------------------------
+
+
+#Function to setup GUI for page 2, the website list page
+def Setup_GUI_Page2():
+    global tickbox_Y
+    global clientList
+    global isFirstLoad
+    global mainFrame
+    
+    root = Tk()
+
+    tickbox_Y = 65 #Reset a global variable
+
+    setupWindow(root) #Draw basic window
+
+    #Configure main Frame element
+    mainFrame = Frame(root,width=640,height=500,bg="#1a1a1a",bd=0,highlightthickness=0, relief='ridge')
+    mainFrame.place(x=20, y=70)
+
+    
+    #Configure Static Text Labels
+    title = Label(root, text="Client Website List",bg="#333333",fg="White",font=("Helvetica", 18, 'bold'))
+    title.place(x=20,y=20)
+
+    nameTitle = Label(mainFrame, text="CLIENT NAME",bg="#1a1a1a",fg="White",font=("{Lucida Console}",10,'bold'))
+    nameTitle.place(x=65,y=30)
+
+    urlTitle = Label(mainFrame, text="WEBSITE LINK",bg="#1a1a1a",fg="White",font=("{Lucida Console}",10,'bold'))
+    urlTitle.place(x=260,y=30)
+
+    versionTitle = Label(mainFrame, text="CURRENT VERSION",bg="#1a1a1a",fg="White",font=("{Lucida Console}",10,'bold'))
+    versionTitle.place(x=460,y=30)
+
+
+
+    #Client List Functionality Setup
+    
+    #Create a tickbox class which can be applied to multiple boxes
+    class tickBox():
+        def __init__(self,X,Y,ticked): #Takes x,y arguments for its position on screen
+            self.ticked = ticked
+            if self.ticked:
+                self.image = "images/checkbox_checked.png"
+            else:
+                self.image = "images/checkbox_unchecked.png"
+            self.boundClient = -1
+    
+            self.img = PhotoImage(file=self.image)
+            self.btn = Button(mainFrame, image=self.img,bd=0,highlightthickness=0, command=self.changeState)
+            self.btn.place(x=X,y=Y)
+
+        #Method called when tick button is clicked
+        def changeState(self):
+            if not self.ticked:
+                self.ticked = True
+                self.image = "images/checkbox_checked.png"
+            else:
+                self.ticked = False
+                self.image = "images/checkbox_unchecked.png"
+        
+            self.img.config(file=self.image) #Change image to match button's state
+            clientList[self.boundClient].active = self.ticked #Change state of bound client
+            clientList[self.boundClient].updateState()
+
+        #Method to remove button
+        def remove(self):
+            try:
+                self.btn.destroy()
+            except:
+                pass
+
+                    
+    #Test when page reloads if clients need to be redrawn
+    if len(clientList) > 0:
+        #Loop through all remaining clients and draw them one by one
+        for i in range(0,len(clientList)):
+            clientList[i].name = str(i+1) + ". " + clientList[i].name[3:len(clientList[i].name)] #Have the name with the right number or id out the front
+            clientList[i].drawClient()
+            box = tickBox(15,tickbox_Y,clientList[i].active)
+            btnList.append(box)
+            tickbox_Y += 65
+            box.boundClient = i #Bind this checkbox with this client
+
+
+ 
+    #Function to create and add a new client object 
+    def addClient(isInputRequired, n, u, v):
+        global tickbox_Y
+
+        if len(clientList) < 6:
+            if isInputRequired:
+                name = str(len(clientList)+1) +". " + simpledialog.askstring("Please Input", "Input Name for new client:")
+                url = simpledialog.askstring("Please Input", "Input URL for new client:")
+                version = "v" + simpledialog.askstring("Please Input", "Input software verison for new client:")
+            else:
+                name = n
+                url = u
+                version = v
+
+            c = client(name, url, version, True)
+            clientList.append(c)
+            c.drawClient()
+            box = tickBox(15,tickbox_Y,True)
+            btnList.append(box)
+            tickbox_Y += 65
+            box.boundClient = clientList.index(c) #Bind this checkbox with this client
+            
+            #Open the text file storing client data
+            clientTXT = open("data/client-list.txt","r+")
+            deleteContent(clientTXT)
+            #Add to text file
+            for i in clientList:
+                if clientList.index(i) < len(clientList)-1:
+                    clientTXT.write(i.name + "," + i.url + "," + i.version + "," + str(i.active) + "\n")
+                else:
+                    clientTXT.write(i.name + "," + i.url + "," + i.version + "," + str(i.active))
+
+
+            clientTXT.close()
+            
+        else:
+            messagebox.showwarning(title="Warning", message="You can have no more than 6 clients.")
+
+
+    #Function to remove last client from list
+    def removeClient():
+        global tickbox_Y
+        global btnList
+        
+        if len(clientList) > 0:
+            userChoice = int(simpledialog.askstring("Please Input", "What is the number from the list, of the client you want to remove?"))
+            
+            clientList[userChoice-1].destroyClient()
+            btnList[userChoice-1].remove()
+            clientList.pop(userChoice-1)
+            btnList.pop(userChoice-1)
+            tickbox_Y -= 65
+
+
+            clientTXT = open("data/client-list.txt","r+")
+            lines = clientTXT.readlines()
+            deleteContent(clientTXT)
+            
+            for line in lines:
+                if line != "\n":
+                    if int(line[0:1]) != userChoice:
+                        clientTXT.write(line)
+            clientTXT.close()
+
+
+            clientTXT = open("data/client-list.txt","r+")
+            lines = clientTXT.readlines()
+            deleteContent(clientTXT)
+            for i in range(0,len(lines)):
+                if lines[i] != "\n":
+                    if i < len(lines)-1:
+                        line = str(i+1) + ". " + lines[i][3:len(lines[i])] + "\n"
+                    else:
+                        line = str(i+1) + ". " + lines[i][3:len(lines[i])]
+                    clientTXT.write(line)
+            clientTXT.close()
+
+            
+
+            if userChoice <= len(clientList):
+                #Re-draw the rest of the list as the user removed something from the middle
+                for i in range(0,len(clientList)):
+                    clientList[i].destroyClient() #Delete all gui elements
+                for i in range(0,len(btnList)): #Delete all check-boxes
+                    btnList[i].remove()
+
+                #Reset variables
+                tickbox_Y = 65 
+                btnList = []
+
+                #Loop through all remaining clients and draw them one by one
+                for i in range(0,len(clientList)):
+                    clientList[i].name = str(i+1) + ". " + clientList[i].name[3:len(clientList[i].name)] #Have the name with the right number or id out the front
+                    clientList[i].drawClient()
+                    box = tickBox(15,tickbox_Y,clientList[i].active)
+                    btnList.append(box)
+                    tickbox_Y += 65
+                    box.boundClient = i #Bind this checkbox with this client
+                
+        else:
+            messagebox.showwarning(title="Warning", message="There is nothing to remove. Please add a client.")
+            
+
+    #Add and Remove buttons setup
+    addButton = Button(root,command=lambda: addClient(True,"","",""),width=8,height=2, text="Add", bg="#333333",fg="White",font=("Helvetica", 12),highlightbackground="#666666", relief='ridge',highlightcolor="#666666", highlightthickness=1)
+    addButton.place(x=20,y=590)
+
+    removeButton = Button(root,command=removeClient, width=8,height=2, text="Remove", bg="#333333",fg="White",font=("Helvetica", 12),highlightbackground="#666666", relief='ridge',highlightcolor="#666666", highlightthickness=1)
+    removeButton.place(x=130,y=590)
+
+    #Home Button setup
+    homeButton = Button(root,width=13,height=2,command=lambda: openHomePage(root), text="Return to Home", bg="#666666",fg="Black",font=("Helvetica", 12),highlightbackground="#666666", relief='ridge',highlightcolor="#666666", highlightthickness=1)
+    homeButton.place(x=534,y=590)
+
+
+
+    
+
+    root.mainloop() #Begin main GUI Loop
+
+    # END OF PAGE TWO SETUP #
+
+
+#-----------------------------------------------------------------------------------------------
+
+
+def Setup_GUI_Page3():
+    global popupMenu
+    global clientList
+    global dayLabels
+    global arrDatePanels
+    
+    root = Tk()
+
+    setupWindow(root) #Draw basic window
+
+    firstPageLoad = True
+
+    #Side panel frame
+    sidePanel = Frame(root,width=200,height=390,bg="#666666")
+    sidePanel.place(x=10,y=150)
+    
+    #Configure Static text labels
+    title = Label(root, text="Update Scheduler",bg="#333333",fg="White",font=("Helvetica", 18, 'bold'))
+    title.place(x=20,y=20)
+
+    subtitle = Label(sidePanel, text="Add Update Event:",bg="#666666",fg="White",font=("Helvetica", 15))
+    subtitle.place(x=8,y=5)
+
+    clientLabel = Label(sidePanel, text="Clients:",bg="#666666",font=("Helvetica", 13))
+    clientLabel.place(x=8,y=50)
+
+    dateLabel = Label(sidePanel, text="Date:",bg="#666666",font=("Helvetica", 13))
+    dateLabel.place(x=8,y=130)
+
+    emailLabel = Label(sidePanel, text="Email Reminders:",bg="#666666",font=("Helvetica", 13))
+    emailLabel.place(x=8,y=215)
+    
+    #Main buttons setup
+    homeButton = Button(root,width=13,height=2,command=lambda: openHomePage(root), text="Return to Home", bg="#666666",fg="Black",font=("Helvetica", 12),highlightbackground="#666666", relief='ridge',highlightcolor="#666666", highlightthickness=1)
+    homeButton.place(x=644,y=590)
+
+    clearButton = Button(root,width=16,height=2, text="Clear All Events", bg="#333333",fg="White",font=("Helvetica", 12),highlightbackground="#666666", relief='ridge',highlightcolor="#666666", highlightthickness=1)
+    clearButton.place(x=20,y=590)
+
+    submitButton = Button(root,text="Submit",width=9,bg="#999999",font=("Helvetica", 12),highlightbackground="#666666", relief='ridge',highlightcolor="#666666", highlightthickness=1)
+    submitButton.place(x=18,y=490)
+
+
+    #Dropdown menu setup
+    # Create a Tkinter variable
+    tkvar = StringVar(root)
+
+    # Array of options 
+    choices = ["Select Client(s)"]
+    for i in clientList:
+        choices.append(i.name[3:len(i.name)])
+        
+    tkvar.set("Select Client(s)") # set the default option
+
+    popupMenu = OptionMenu(sidePanel,tkvar, *choices)
+    popupMenu.config(width=16,bg="#999999",fg="White",highlightthickness=1, highlightbackground="White",relief='flat')
+    popupMenu.place(x=8,y=80)
+
+    # on change dropdown value
+    def change_dropdown(*args):
+        global popupMenu
+        global activeClients
+
+        #Loop through all choices and place a tick next to the selected client
+        for i in range(0,len(choices)):
+            if choices[i] == tkvar.get() and choices[i] != "Select Client(s)":
+                if choices[i][0:1] != "✅":
+                    activeClients.append(choices[i])
+                    choices[i] = "✅ " + tkvar.get()
+                else:
+                    activeClients.pop(activeClients.index(choices[i][2:len(choices[i])]))
+                    choices[i] = choices[i][2:len(choices[i])]
+                    
+            popupMenu.destroy() #Remove drop down menu
+            popupMenu = OptionMenu(sidePanel, tkvar, *choices) #Replace with new one
+            popupMenu.config(width=16,bg="#999999",fg="White",highlightthickness=1, highlightbackground="White",relief='flat')
+            popupMenu.place(x=8,y=80)
+
+        #Generate the new 'title' for the drop down menu based on the chosen clients
+        outputString = ""
+        exceeded = False
+        for i in range(0,len(activeClients)):
+            if len(outputString) < 17:
+                if i < len(activeClients)-1:
+                    outputString = outputString + activeClients[i] + ","
+                else:
+                    outputString = outputString + activeClients[i]
+            else:
+                exceeded = True
+        if exceeded:
+            outputString = outputString + "..."
+
+        if len(outputString) != 0:
+            tkvar.set(outputString)
+        else:
+            tkvar.set("Select Client(s)")
+
+    # link function to change dropdown
+    tkvar.trace('w', change_dropdown)
+
+
+
+
+    #Date Entry Field
+    import sys
+    sys.path.append(os.getcwd() + "/libraries/") #Change working directory to import modules
+    
+    from tkcalendar import dateentry #Import installed modules stored in libraries folder
+    
+    sys.path.append(os.getcwd()[0:len(os.getcwd())-11])
+    
+    #Event called when a new date is picked
+    def dateSelected(event):
+        selectedDate = datePicker.get_date()
+        print(selectedDate)
+
+    datePicker = dateentry.DateEntry(sidePanel,width=20,bg="#999999",fg="white",year=2020) #Create date picker widget
+    datePicker.place(x=10,y=157)
+    datePicker.bind("<<DateEntrySelected>>",dateSelected)
+
+
+
+    #Email reminders toggle switch
+    img = PhotoImage(file="images/toggle_switch_off.png")
+
+    def emailToggle():
+        global emailReminders
+
+        if not emailReminders:
+            img.config(file="images/toggle_switch_on.png")
+            emailReminders = True
+        else:
+            img.config(file="images/toggle_switch_off.png")
+            emailReminders = False
+
+    switch = Button(root, image=img,highlightthickness=1, relief='ridge', command=emailToggle)
+    switch.place(x=20,y=410)
+
+    #--------------------------------------------------------------------------------------------------
+
+    #CALENDAR SETUP
+
+    #Date panel object for each square on the calendar
+    class datePanel():
+        def __init__(self,X,Y):
+            self.frame = Frame(root,bg="#333333",width=83,height=72,highlightthickness=1,highlightbackground="#999999")
+            self.frame.place(x=X,y=Y)
+            self.mainText = tk.StringVar()
+            self.mainText.set("")
+            self.txt = Label(self.frame, textvariable=self.mainText, bg="#333333", fg="#999999",font=("Helvetica",12))
+            self.txt.place(x=4,y=4)
+            self.updateLabel = Label(self.frame)
+            self.buttonImg = PhotoImage(file = "images/calendar_cross_button.png")
+            self.crossButton = Button(self.frame)
+
+        def drawAllClientsEvent(self):
+            self.frame.config(highlightbackground="red",highlightthickness=2)
+            self.updateLabel = Label(self.frame, text="Update:\nAll Clients",bg="#333333", fg="red")
+            self.updateLabel.place(x=10,y=22)
+            
+            self.crossButton = Button(self.frame, image=self.buttonImg, bd=0,highlightthickness=0,command=self.resetFrame)
+            self.crossButton.place(x=55,y=0)
+
+        def drawMultipleClientsEvent(self, clientsAmout):
+            self.frame.config(highlightbackground="#03c2fc",highlightthickness=2)
+            self.updateLabel = Label(self.frame, text="Update:\n"+str(clientsAmout)+" Client(s)",bg="#333333", fg="#03c2fc")
+            self.updateLabel.place(x=10,y=22)
+
+            self.crossButton = Button(self.frame, image=self.buttonImg, bd=0,highlightthickness=0,command=self.resetFrame)
+            self.crossButton.place(x=55,y=0)
+
+        def resetFrame(self):
+            self.frame.config(highlightbackground="#999999",highlightthickness=1)
+            self.updateLabel.config(text="")
+            self.crossButton.destroy()
+
+
+    posX = 208
+    posY = 180
+
+    #Reset values when page is first loaded
+    if firstPageLoad:
+        dayLabels = []
+        arrDatePanels = []
+        firstPageLoad = False
+
+    #Draw and create object for each panel on the calendar
+    for i in range(0,5):
+        for j in range(0,7):
+            panel = datePanel(posX,posY) #Create the object
+            arrDatePanels.append(panel) #Add to array of panels
+            posX+=83
+        posY+=72
+        posX=208
+
+    #Main function to draw calendar given a month
+    def drawCalendar(currentMonth):
+        global arrDatePanels
+        global dayLabels
+
+
+        #An example of an event and how it would function, uncomment to test
+        #arrDatePanels[3].drawAllClientsEvent()
+        #arrDatePanels[15].drawMultipleClientsEvent(3)
+        
+
+        X = 208
+
+        #Add in day numbers
+        months = [31,28,31,30,31,30,31,31,30,31,30,31]
+        
+        for panel in arrDatePanels:
+            panel.mainText.set("")
+            
+        for i in range(0,months[currentMonth]):
+            arrDatePanels[i].mainText.set(str(i+1))
+
+        
+        
+        #Add day labels dependent on which month it is.
+        startingDays = [3,6,0,3,5,1,3,6,2,4,0,2]
+        days = ["SUN","MON","TUE","WED","THU","FRI","SAT"]
+        reshuffledDays = []
+
+        #Create a properly ordered days array
+        for i in range(startingDays[currentMonth], len(days)):
+            reshuffledDays.append(days[i])
+
+        for i in range(0, startingDays[currentMonth]):
+            reshuffledDays.append(days[i])
+
+        #Create Days of week labels
+        if len(dayLabels) == 0:
+            firstTime = True
+        else:
+            firstTime = False
+            
+        for i in range(0,7):
+            if firstTime:
+                day = Frame(root,width=83,height=30,highlightthickness=1,highlightbackground="#999999",bg="#333333")
+                day.place(x=X,y=150)
+                X+=83
+                varText = tk.StringVar()
+                varText.set(reshuffledDays[i])
+                txt = Label(day,textvariable=varText,fg="#999999",bg="#333333")
+                txt.place(x=25,y=3)
+                dayLabels.append([txt,varText])
+            else:
+                dayLabels[i][1].set(reshuffledDays[i])
+
+                
+    drawCalendar(selectedMonth) #Set july (current month) as deafult month
+
+    allMonths = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"]
+    monthLabel = Label(root, text=allMonths[selectedMonth],fg="White",bg="#333333",font=("Helvetica",15))
+    monthLabel.place(x=247,y=110)
+
+    #Buttons to scroll the months left and right
+    def scrollRight(btn):
+        global selectedMonth
+        selectedMonth += 1
+            
+        if selectedMonth == 12:
+            selectedMonth = 0
+        
+        drawCalendar(selectedMonth)
+        btn.config(text=allMonths[selectedMonth])
+
+    def scrollLeft(btn):
+        global selectedMonth
+        selectedMonth -= 1
+        
+        if selectedMonth == -1:
+            selectedMonth = 11
+
+        drawCalendar(selectedMonth)
+        btn.config(text=allMonths[selectedMonth])
+
+    #Draw GUI for these buttons
+    i = PhotoImage(file="images/date_arrow_right.png")
+    rightButton = Button(root,image=i,bd=0,highlightthickness=0, command=lambda: scrollRight(monthLabel))
+    rightButton.place(x=300,y=110)
+
+    i2 = PhotoImage(file="images/date_arrow_left.png")
+    leftButton = Button(root,image=i2,bd=0,highlightthickness=0, command=lambda: scrollLeft(monthLabel))
+    leftButton.place(x=216,y=110)
+
+    #--------------------------------------------------------------------------------------------------
+       
+
+    root.mainloop() #Begin main GUI Loop
+
+    # END OF PAGE THREE SETUP #
+
+
+#-----------------------------------------------------------------------------------------------
+def initialise():
+    Setup_GUI_Page1()
+
+
+
+

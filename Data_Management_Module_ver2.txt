@@ -1,0 +1,184 @@
+'''
+SOFTWARE DEVELOPMENT PROJECT
+Client Update Utility - Data Distributing/Uploading Module
+
+Made By: Will 12SDA
+Started on 14/07/2020
+
+Naming Scheme: Camel Case
+
+This module is the module which handles the distributation of data
+to each clients HTML webpage as well as the uploading of data to be
+distributed.
+
+'''
+
+#Import dependencies
+import os
+import shutil
+import time
+
+
+#--------------------------------------------------------------------------------
+
+#Function to clear a txt/html file
+def deleteContent(pfile):
+    pfile.seek(0)
+    pfile.truncate()
+
+#--------------------------------------------------------------------------------
+
+def getListOfFiles(dirName):
+    #create a list of file and sub directories 
+    #names in the given directory 
+    listOfFile = os.listdir(dirName)
+    allFiles = list()
+    #Iterate over all the entries
+    for entry in listOfFile:
+        #Create full path
+        fullPath = os.path.join(dirName, entry)
+        #If entry is a directory then get the list of files in this directory 
+        if os.path.isdir(fullPath):
+            allFiles = allFiles + getListOfFiles(fullPath)
+        else:
+            allFiles.append(fullPath)
+                
+    return allFiles
+
+#--------------------------------------------------------------------------------
+
+
+#Main function to distribute update data given the list of clients
+def distributeUpdates(clients, version):
+    repository = "data/update_data_repository"
+    
+    mainData = getListOfFiles(repository)[0] #Get the file in the update_data_repository folder
+
+    for client in clients: #Loop through all clients
+        if client.active: #Only distribute if this client is ticked/active on client list page
+            fileDestination = "client_webpages/" + client.name[3:len(client.name)] + "/webpage_data/update_data"
+
+            #Delete old update so it can be replaced with new one
+            shutil.rmtree(fileDestination)
+            os.makedirs(fileDestination)
+            
+            shutil.copy(mainData, fileDestination) #Copy over the data
+
+            #Edit the update_information.txt file
+            writeUpdateInformation(client, version)
+            
+
+#--------------------------------------------------------------------------------
+
+
+#Function to create an HTML webpage in the "client_webpages" directory for a given client
+def createClientWebpage(client):
+    templateFolder = "data/client_webpage_template"
+
+    clientName = client.name[3:len(client.name)] #Get the name of the client
+    newName = "client_webpages/" + clientName
+    try:
+        shutil.copytree(templateFolder, newName) #Copy and paste the folder to the right location
+        
+        htmlSource = newName + "/source.html"
+        newPageName = newName + "/" + clientName + "_Webpage.html"
+        os.rename(htmlSource, newPageName) #Rename the HTML folder
+
+        htmlFile = open(newPageName, "r+") #open the HTML file
+        sourceCode = htmlFile.read() #Get its source code
+        deleteContent(htmlFile) #Clear the file
+
+        #This line edits the html file so the webpage reflects the clients name
+        sourceCode = sourceCode.replace(sourceCode[sourceCode.find('<div id="container">')+72:sourceCode.find('<div id="container">')+80],clientName)
+
+        htmlFile.write(sourceCode) #Write the edited HTML back in
+
+        htmlFile.close()
+        print("Webpage created")
+        
+    except:
+        print("This client webpage folder already exists.")
+
+        
+#--------------------------------------------------------------------------------
+
+
+#Function to remove a clients webpage from the client_webpages directory
+def removeClientWebpage(client):
+    try:
+        folderDestination = "client_webpages/" + client.name[3:len(client.name)] #find the folder
+        shutil.rmtree(folderDestination) #Remove the folder
+    except:
+        print("This folder does not exist. Please call 'createClientWebpage' first.")
+
+    
+#--------------------------------------------------------------------------------
+
+
+#Function to write details into the update_information.txt from a given client
+def writeUpdateInformation(client, version):
+    
+    clientName = client.name[3:len(client.name)] #Get the name of the client
+
+    #Open up the text file
+    updateInformationTXT = open("client_webpages/" + clientName + "/webpage_data/update_information.txt","r+")
+
+    updateDataFolder = "client_webpages/" + clientName + "/webpage_data/update_data"
+    mainData = getListOfFiles(updateDataFolder)[0] #Get the name of the current update_data
+
+    #Create name of data which will be written to text file
+    outputName = mainData[16+len(clientName)+1:len(mainData)]
+    outputName = outputName.replace("\\", "/")
+
+    #Output date and time
+    datetime = time.strftime("%d/%m/%Y") + " " + time.strftime("%H:%M:%S")
+
+    
+    outputText = datetime + "," + version + "," + outputName #reate output string
+
+    #Write the output to the text file
+    deleteContent(updateInformationTXT)
+    updateInformationTXT.write(outputText)
+
+
+#--------------------------------------------------------------------------------
+
+
+#Validate that a certain file is a .txt or .csv format
+def validateFileType(file):
+    if file[len(file)-3:len(file)].lower() == "txt" or file[len(file)-3:len(file)].lower() == "csv":
+        return True
+    else:
+        return False
+
+
+#--------------------------------------------------------------------------------
+
+    
+#Move a given file to the data/update_data_repository folder
+def moveToRepository(file):
+    fileDestination = "data/update_data_repository"
+
+    shutil.rmtree(fileDestination) #Delete the folder to clear it
+    os.makedirs(fileDestination) #Create the folder again
+    
+    shutil.copy(file, fileDestination) #Copy the uploaded file over
+    
+
+#--------------------------------------------------------------------------------
+
+#un-comment this to test this module independently of the others given an example client class
+##class c():
+##    def __init__(self,name):
+##        self.name = name
+##        self.active = True
+##test = c("1. Client 1")
+##
+##createClientWebpage(test) #create this when a new client is added in GUI module
+##distributeUpdates([test],"1.1") #In automatic updates module call this when its time for a new update
+## #To validate the completeness of this test, view client_webpages folder
+
+##removeClientWebpage(test)
+
+
+#In IDLE, highlighting the region and pressing alt+4 will uncomment the region

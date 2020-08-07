@@ -1,0 +1,223 @@
+'''
+SOFTWARE DEVELOPMENT PROJECT
+Client Update Utility - GUI MODULE
+
+Made By: Will 12SDA
+Started on 30/07/2020
+
+This code contains the code required for all pages of
+the GUI and its functionality
+
+Naming Conventions: Camel Case
+
+This uses:
+GUI_module.py
+
+'''
+from datetime import datetime
+
+#Import modules I created
+import GUI_Module as gui
+
+arrUpdateLogLines = ["","UPDATE LOG"] #Lines in the update lgg, preloaded with title line
+arrRawData = []
+currentUpdate = 0
+isDateFiltered,isNameFiltered, isStatusFiltered = False, False, False
+
+#---------------------------------------------------------------------------------------------------
+
+def addToUpdateLog(clients, version):
+    global currentUpdate
+    currentUpdate += 1 #Increment update counter
+
+    arrUpdateLogLines.append("")
+    arrUpdateLogLines.append("Cumulative Update " + str(currentUpdate) + ":") #Show which update it is
+
+    for client in clients: #Loop thourh all clients
+
+        #Display name and timestamp of attempted update
+        arrUpdateLogLines.append("")
+        arrUpdateLogLines.append("> Client Name: " + client.name[3:len(client.name)])
+        time = datetime.now()
+        arrUpdateLogLines.append("> Timestamp: " + time.strftime("%d/%m, %H:%M:%S"))
+
+        #Find out whether the client recieved an update or not
+        outcome = ""
+        if client.active:
+            outcome = "SUCCESS"
+        else:
+            outcome = "CLIENT IS DISABLED IN LIST"
+
+        if client.info != "": #If there is other information, such as the client is already up to date or there was a fail, set it here
+            outcome = client.info
+            
+        arrUpdateLogLines.append("> Success/Fail: " + outcome) #Display outcome
+
+        arrRawData.append([client.name[3:len(client.name)],time,outcome]) #add the data for this client to another array so it can be filtered
+        
+    arrUpdateLogLines.append("")
+
+    gui.drawUpdateLog(arrUpdateLogLines, True) #Draw the new lines to the GUI update log
+
+
+#---------------------------------------------------------------------------------------------------
+
+#QUICK SORT ALGORITHM IMPLEMENTATION
+    
+#This is the 'swap' function which will swap any two items within an array
+def swap(arr, i1, i2):
+    temp = arr[i1] #Assign the value of item 1 to a temporary stoarage variable
+    arr[i1] = arr[i2] #Make the first item the value of the second
+    arr[i2] = temp #Set the second to first items value
+    return arr
+
+
+#Main recursive quicksort function
+def quicksort(arr, low, high, item):
+    pivot = arr[high] #Create the pivot for the sort
+    
+    if low < high: #Only continue if the low pointer is left of the high pointer
+        split = low #Assign 'low' to a 'split' pointer variable for comparison within the loop
+
+        for x in range(low, high): #Loop through this section of the array
+            if item == 1: #Sort it like this for a timestamp sort
+                if arr[x][item] > pivot[item]: #Compare the array items to the pivot using ">" rather than "<" to sort the array from high to low instead of low to high
+                    arr = swap(arr, split, x) #Swap these items to make all items larger than pivot on one side and items smaller on the other
+                    split = split + 1 #Increment the pointer
+            elif item == 0:
+                if arr[x][item].lower() < pivot[item].lower(): #Sort alphabetically by converting to ascii
+                    arr = swap(arr, split, x) #Swap these items to make all items larger than pivot on one side and items smaller on the other
+                    split = split + 1 #Increment the pointer
+
+        arr = swap(arr, split, high) #Swap these items
+        
+        #Recursively call quicksort on each half of the pivot until sorted
+        quicksort(arr, low, split-1, item) 
+        quicksort(arr, split+1, high, item)
+
+
+#---------------------------------------------------------------------------------------------------
+
+#Function for formatting a filtered log
+def formatLog():
+    arrOutput = []
+        
+    #Format and display the output
+    arrOutput.append("")
+    arrOutput.append("UPDATE LOG - Filtered")
+    for data in arrRawData:
+        arrOutput.append("")
+        arrOutput.append("> Client Name: " + data[0])
+        arrOutput.append("> Timestamp: " + data[1].strftime("%d/%m, %H:%M:%S"))
+        arrOutput.append("> Success / Fail: " + data[2])
+    arrOutput.append("")
+
+    return arrOutput #Return it so it can be used
+
+#---------------------------------------------------------------------------------------------------
+
+#Function to filter log by date
+def filterDate():
+    global isDateFiltered,isNameFiltered
+    
+    if len(arrUpdateLogLines) > 2:
+        if not isDateFiltered:
+            quicksort(arrRawData, 0, len(arrRawData)-1, 1) #Quicksort the array on the dates
+
+            arrOutput = formatLog() #Format the now sorted array so it can be displayed
+
+            gui.drawUpdateLog(arrOutput, False) #Draw it to the GUI
+
+            #Set other values so you can filter using other buttons
+            isDateFiltered = True
+            isNameFiltered = False
+            isStatusFiltered = False
+        else:
+            gui.drawUpdateLog(arrUpdateLogLines, True)
+            isDateFiltered = False
+            isNameFiltered = False
+
+#---------------------------------------------------------------------------------------------------
+
+#Function to filter log by client's name
+def filterName():
+    global isDateFiltered,isNameFiltered
+    
+    if len(arrUpdateLogLines) > 2:
+        if not isNameFiltered:
+            
+            quicksort(arrRawData, 0, len(arrRawData)-1, 0) #Quicksort the array on the client names
+            
+            arrOutput = formatLog() #Format the now sorted array so it can be displayed
+
+            gui.drawUpdateLog(arrOutput, False) #Draw it to the GUI
+
+            #Set other values so you can filter using other buttons
+            isNameFiltered = True
+            isDateFiltered = False
+            isStatusFiltered = False
+        else:
+            gui.drawUpdateLog(arrUpdateLogLines, True)
+            isDateFiltered = False
+            isNameFiltered = False
+
+#---------------------------------------------------------------------------------------------------
+
+#Function to filter the log by whether it was a success, fail or any other scenario
+def filterStatus():
+    global isDateFiltered,isNameFiltered,isStatusFiltered, arrRawData
+    
+    if len(arrUpdateLogLines) > 2:
+        if not isStatusFiltered:
+
+            '''
+            We cannot use a traditional sorting algorithm here as we need to sort in the order:
+            fail, already up to date, disabled, success.
+            In this order the user can see the ones that went wrong
+            '''
+            
+            arrSorted = []
+
+            for i in range(0,4): #loop through 4 times for each case
+                for data in arrRawData: #loop through all the data
+                    if i == 0 and data[2] == "FAIL": 
+                        arrSorted.append(data) #Append all fails to front of list
+                    elif i == 1 and data[2] == "ALREADY UP-TO-DATE":
+                        arrSorted.append(data) #Append up to date clients next
+                    elif i == 2 and data[2] == "CLIENT IS DISABLED IN LIST":
+                        arrSorted.append(data) #Then the disabled clients
+                    elif i == 3 and data[2] == "SUCCESS":
+                        arrSorted.append(data) #Lastly the successful clients
+                        
+            arrRawData = arrSorted #Set the raw data array to the sorted one
+            
+            arrOutput = formatLog() #Format the log to be displayed
+
+            gui.drawUpdateLog(arrOutput, False) #Draw to the gui module
+
+            #Set other values so you can filter using other buttons
+            isStatusFiltered = True
+            isDateFiltered = False
+            isNameFiltered = False
+        else:
+            gui.drawUpdateLog(arrUpdateLogLines, True)
+            isDateFiltered = False
+            isNameFiltered = False
+            isStatusFiltered = False
+
+#---------------------------------------------------------------------------------------------------
+
+#The function to format an excel-compaitble CSV file from the update log
+def formatCSV():
+
+    arrOutputLines = ["Client Name,Update Date, Update Time, Update Status"] #set array with header line
+    
+    for data in arrRawData:
+        arrOutputLines.append(data[0] + "," + data[1].strftime("%d/%m, %H:%M:%S") + "," + data[2]) #Write each line
+
+    return arrOutputLines #Return the outpu
+
+    
+
+#END OF UPDATE LOG MANAGER MODULE
+        
